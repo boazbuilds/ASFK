@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.venv/
+venv/
+exports/
+*.log
+
+# Echte bankafschriften (alleen voorbeelddata inchecken)
+data/bankafschriften/*.csv
+!data/bankafschriften/voorbeeld_2024.csv
+
+# Gegenereerde bestanden
+data/mapping.xlsx
