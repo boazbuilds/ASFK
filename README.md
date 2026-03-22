@@ -12,6 +12,12 @@ Transparant financieel dashboard voor een ANBI-stichting op basis van Rabobank b
 - **Excel-export** – volledige jaarrekening in één klik
 - **Mapping-engine** – flexibele classificatie via Excel/CSV zonder code te wijzigen
 
+## Beveiliging
+
+> **Let op: houd deze repository PRIVÉ.**
+> De `data/`-map bevat bankafschriften met financiële transactiedata.
+> Controleer in GitHub onder *Settings → Danger Zone* dat de repo op **Private** staat.
+
 ## Snel starten
 
 ```bash
