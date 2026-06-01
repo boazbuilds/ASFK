@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A Smile from Kenya — Events Dashboard</title>
+  <meta name="description" content="Internal events dashboard for A Smile from Kenya: session reach, facilitator and driver payments, and monthly impact." />
+  <meta name="theme-color" content="#2C1A0E" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta property="og:title" content="A Smile from Kenya — Events Dashboard" />
+  <meta property="og:description" content="Session reach, payments, and monthly impact at a glance." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23D4521C'/><circle cx='23' cy='26' r='4.2' fill='%23FAF8F3'/><circle cx='41' cy='26' r='4.2' fill='%23FAF8F3'/><path d='M18 36c3.6 8 9.4 11.5 14 11.5S42.4 44 46 36' fill='none' stroke='%23FAF8F3' stroke-width='5' stroke-linecap='round'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #EDEAE0;
+      color: #2C1A0E;
+    }
+
+    header {
+      background: #EDEAE0;
+      color: #2C1A0E;
+      padding: 20px 28px 0;
+      border-bottom: 2px solid #D9D2C5;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 16px;
+    }
+
+    .header-brand { display: flex; flex-direction: column; gap: 2px; }
+
+    .header-brand .org-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #2C1A0E;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+
+    .header-brand .org-sub {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #D4521C;
+    }
+
+    header p#last-updated {
+      font-size: 0.78rem;
+      color: #8B7355;
+      margin-top: 2px;
+    }
+
+    .upload-btn {
+      background: #C9A227;
+      color: white;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.84rem;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
+    }
+
+    .upload-btn:hover { background: #B8911F; }
+
+    #file-input { display: none; }
+
+    .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+
+    /* ── Summary cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #FAF8F3;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(44,26,14,.06);
+      text-align: center;
+      border: 1px solid #E8E0D0;
+    }
+
+    .card .value {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: #D4521C;
+      letter-spacing: -0.02em;
+    }
+
+    .card .label {
+      font-size: 0.72rem;
+      color: #8B7355;
+      margin-top: 5px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+    }
+
+    /* ── Charts ── */
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .chart-card {
+      background: #FAF8F3;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(44,26,14,.06);
+      border: 1px solid #E8E0D0;
+    }
+
+    .chart-card h2 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #8B7355;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* ── Table ── */
+    .table-card {
+      background: #FAF8F3;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(44,26,14,.06);
+      overflow-x: auto;
+      border: 1px solid #E8E0D0;
+    }
+
+    .table-card h2 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #8B7355;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 9px 10px;
+      background: #EDE8DC;
+      color: #2C1A0E;
+      font-weight: 700;
+      white-space: nowrap;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #E8E0D0;
+      vertical-align: top;
+      color: #2C1A0E;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #F5F0E8; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.73rem;
+      font-weight: 600;
+    }
+
+    .badge-blue  { background: #D4EDDA; color: #1B5E35; }
+    .badge-green { background: #C8E6D0; color: #145228; }
+    .badge-orange{ background: #FDEBD0; color: #7D4E0F; }
+    .badge-gray  { background: #EDE8DC; color: #4A3728; }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #B0A090;
+    }
+
+    .empty .icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty p { font-size: 1rem; }
+    .empty small { font-size: 0.85rem; margin-top: 6px; display: block; }
+
+    /* ── Follow-up alert ── */
+    .followup-alert {
+      background: #FDF0E8;
+      border-left: 4px solid #D4521C;
+      border-radius: 12px;
+      padding: 13px 18px;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+      color: #8B3010;
+      display: none;
+    }
+
+    .followup-alert strong { display: block; margin-bottom: 4px; }
+
+    /* ── Monthly Overview ── */
+    .monthly-section { margin-bottom: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+    .monthly-trend-card {
+      background: #FAF8F3;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(44,26,14,.06);
+      border: 1px solid #E8E0D0;
+    }
+    .monthly-trend-card h2 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #8B7355;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    .month-selector-wrap {
+      background: #FAF8F3;
+      border-radius: 16px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 8px rgba(44,26,14,.06);
+      border: 1px solid #E8E0D0;
+    }
+    .month-selector-label {
+      font-size: 0.72rem;
+      color: #8B7355;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .month-selector { display: flex; flex-wrap: wrap; gap: 6px; }
+    .month-btn {
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1.5px solid #D9D0C0;
+      background: #FAF8F3;
+      color: #2C1A0E;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .month-btn:hover { border-color: #D4521C; color: #D4521C; }
+    .month-btn.active { background: #D4521C; border-color: #D4521C; color: white; font-weight: 700; }
+
+    .monthly-detail {
+      background: #FAF8F3;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(44,26,14,.06);
+      overflow: hidden;
+      border: 1px solid #E8E0D0;
+    }
+    .monthly-detail-header {
+      background: #2C1A0E;
+      color: #F5F0E8;
+      padding: 18px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+    }
+    .monthly-detail-header .mh-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .monthly-detail-header .mh-stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .mh-stat { display: flex; flex-direction: column; align-items: center; }
+    .mh-stat .mh-num { font-size: 1.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+    .mh-stat .mh-lbl { font-size: 0.65rem; opacity: 0.8; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+
+    .monthly-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border-bottom: 1px solid #E8E0D0;
+    }
+    @media (max-width: 540px) { .monthly-detail-grid { grid-template-columns: 1fr; } }
+
+    .monthly-col { padding: 16px 18px; }
+    .monthly-col:first-child { border-right: 1px solid #E8E0D0; }
+    @media (max-width: 540px) { .monthly-col:first-child { border-right: none; border-bottom: 1px solid #E8E0D0; } }
+
+    .monthly-col-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #8B7355;
+      margin-bottom: 10px;
+    }
+
+    .person-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid #EDE8DC;
+      font-size: 0.85rem;
+    }
+    .person-row:last-child { border-bottom: none; }
+    .person-row-name { font-weight: 600; color: #2C1A0E; }
+    .person-row-count {
+      background: #FDF0E8;
+      color: #D4521C;
+      font-weight: 700;
+      font-size: 0.78rem;
+      padding: 2px 10px;
+      border-radius: 999px;
+    }
+
+    .driver-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 7px 0;
+      border-bottom: 1px solid #EDE8DC;
+      font-size: 0.85rem;
+      gap: 8px;
+    }
+    .driver-row:last-child { border-bottom: none; }
+    .driver-row-name { font-weight: 600; color: #2C1A0E; }
+    .driver-dist-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+
+    .boda-photo {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+
+    .driver-payment-card {
+      background: #FAF8F3;
+      border: 1px solid #E8E0D0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .dpc-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #2C1A0E;
+      margin-bottom: 10px;
+    }
+    .dpc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: #4A3728;
+      padding: 4px 0;
+    }
+    .dpc-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+    .dpc-short { background: #D4EDDA; color: #1B5E35; }
+    .dpc-long  { background: #FDEBD0; color: #7D4E0F; }
+    .dpc-unknown { background: #EDE8DC; color: #4A3728; }
+    .dpc-amount { font-weight: 700; color: #D4521C; }
+    .dpc-total {
+      border-top: 1px solid #E8E0D0;
+      margin-top: 10px;
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+    }
+    .dpc-total-amount {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #D4521C;
+    }
+    .driver-grand-total {
+      background: #2C1A0E;
+      color: white;
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+    }
+    .dgt-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .08em; opacity: .75; }
+    .dgt-amount { font-family: 'Playfair Display', Georgia, serif; font-size: 1.5rem; font-weight: 800; color: #C9A227; }
+
+    .rate-config {
+      background: #F5F0E8;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .rate-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: #4A3728;
+    }
+    .rate-label { min-width: 80px; }
+    .rate-input {
+      width: 64px;
+      padding: 4px 8px;
+      border: 1px solid #D9D2C5;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #2C1A0E;
+      background: white;
+      text-align: right;
+    }
+    .rate-input:focus { outline: none; border-color: #D4521C; }
+    /* Monthly session list */
+    .monthly-session-list { padding: 0 0 8px; }
+    .msl-header {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #8B7355;
+      padding: 12px 18px 8px;
+    }
+    .msl-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 100px auto;
+      gap: 8px;
+      padding: 8px 18px;
+      border-top: 1px solid #EDE8DC;
+      font-size: 0.82rem;
+      align-items: center;
+    }
+    @media (max-width: 500px) {
+      .msl-row { grid-template-columns: 70px 1fr; }
+      .msl-driver, .msl-dist { display: none; }
+    }
+    .msl-date { color: #8B7355; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .msl-place { font-weight: 600; color: #2C1A0E; }
+    .msl-project { font-size: 0.74rem; color: #B0A090; }
+    .msl-driver { color: #4A3728; font-size: 0.8rem; }
+    .msl-pax { text-align: right; font-weight: 700; color: #D4521C; white-space: nowrap; }
+
+    /* ── Payment Summary ── */
+    .payment-section { margin-bottom: 24px; }
+
+    .payment-header { margin-bottom: 14px; }
+    .payment-header h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.2rem; font-weight: 800; color: #2C1A0E; }
+    .payment-subtitle { font-size: 0.82rem; color: #8B7355; margin-top: 3px; }
+
+    .payment-filter {
+      background: #FAF8F3;
+      border-radius: 16px;
+      padding: 14px 18px;
+      box-shadow: 0 2px 8px rgba(44,26,14,.06);
+      border: 1px solid #E8E0D0;
+      margin-bottom: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .filter-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .filter-btn {
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1.5px solid #D9D0C0;
+      background: #FAF8F3;
+      color: #2C1A0E;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-btn:hover { border-color: #D4521C; color: #D4521C; }
+    .filter-btn.active { background: #D4521C; border-color: #D4521C; color: white; font-weight: 700; }
+
+    .filter-custom {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.84rem;
+      color: #2C1A0E;
+    }
+    .filter-custom input[type="date"] {
+      border: 1.5px solid #D9D0C0;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 0.84rem;
+      color: #2C1A0E;
+      background: #FAF8F3;
+    }
+    .filter-apply-btn {
+      padding: 5px 14px;
+      background: #C9A227;
+      color: white;
+      border: none;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .filter-apply-btn:hover { background: #B8911F; }
+
+    .filter-period-label { font-size: 0.8rem; color: #8B7355; font-style: italic; margin-left: auto; }
+
+    .payment-role-block { margin-bottom: 20px; }
+    .role-heading {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #8B7355;
+      margin-bottom: 10px;
+      padding-left: 2px;
+    }
+
+    .payment-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .person-card { background: #FAF8F3; border-radius: 16px; box-shadow: 0 2px 8px rgba(44,26,14,.06); overflow: hidden; border: 1px solid #E8E0D0; }
+
+    .person-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid #E8E0D0;
+    }
+    .person-name { font-size: 1rem; font-weight: 700; color: #2C1A0E; letter-spacing: -0.01em; }
+    .person-also-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #FDF0C8;
+      color: #7A5C00;
+      margin-top: 3px;
+    }
+
+    .session-count-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #FDF0E8;
+      border-radius: 10px;
+      padding: 7px 14px;
+      min-width: 58px;
+    }
+    .session-count-pill .count-num { font-family: 'Playfair Display', Georgia, serif; font-size: 1.8rem; font-weight: 800; color: #D4521C; line-height: 1; }
+    .session-count-pill .count-lbl { font-size: 0.62rem; color: #D4521C; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; opacity: 0.8; }
+
+    .session-row {
+      display: grid;
+      grid-template-columns: 90px 1fr auto;
+      gap: 6px;
+      padding: 8px 18px;
+      border-bottom: 1px solid #EDE8DC;
+      font-size: 0.8rem;
+      align-items: start;
+    }
+    .session-row:last-child { border-bottom: none; }
+    .session-date { color: #8B7355; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .session-place { color: #2C1A0E; font-weight: 600; }
+    .session-meta { font-size: 0.74rem; color: #B0A090; margin-top: 1px; }
+    .session-participants { text-align: right; white-space: nowrap; font-weight: 700; color: #2C1A0E; }
+    .session-duration { font-size: 0.72rem; color: #B0A090; text-align: right; }
+
+    .person-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 18px 14px;
+      border-top: 1px solid #E8E0D0;
+      font-size: 0.8rem;
+      color: #8B7355;
+      background: #F5F0E8;
+    }
+    .person-card-footer strong { color: #2C1A0E; }
+
+    .no-sessions-msg { padding: 18px 16px; font-size: 0.84rem; color: #B0A090; text-align: center; }
+
+    .type-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .type-chip {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #EDE8DC;
+      color: #4A3728;
+    }
+
+    .type-summary-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 4px; }
+    .type-summary-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .type-summary-chip .tsc-count {
+      font-size: 1.15rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .tsc-children { background: #D4EDDA; color: #1B5E35; }
+    .tsc-parents  { background: #C8E6D0; color: #145228; }
+    .tsc-teachers { background: #FDEBD0; color: #7D4E0F; }
+    .tsc-office   { background: #EDE8DC; color: #4A3728; }
+    .tsc-other    { background: #F0EBE0; color: #6B5740; }
+
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 10px;
+      padding-bottom: 4px;
+    }
+    .insight-item {
+      background: #F5F0E8;
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .insight-value {
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: #D4521C;
+      line-height: 1.2;
+    }
+    .insight-label {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: #8B7355;
+      margin-top: 3px;
+    }
+
+    /* ── Impact banner ── */
+    .impact-banner {
+      background: #2C1A0E;
+      color: #F5F0E8;
+      border-radius: 16px;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      text-align: center;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    .impact-banner .ib-num {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #C9A227;
+    }
+
+    /* ── Follow-up detail ── */
+    .followup-detail {
+      margin-top: 10px;
+      border-top: 1px solid rgba(212,82,28,.2);
+      padding-top: 10px;
+    }
+    .followup-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(212,82,28,.1);
+      font-size: 0.82rem;
+    }
+    .followup-row:last-child { border-bottom: none; }
+    .followup-row .fr-date { color: #8B3010; font-weight: 600; white-space: nowrap; }
+    .followup-row .fr-info { color: #8B3010; }
+    .followup-row .fr-reason { color: #8B3010; opacity: 0.8; font-style: italic; }
+
+    /* ── Login screen ── */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: #EDEAE0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 24px;
+    }
+
+    .login-box {
+      background: #FAF8F3;
+      border: 1px solid #E8E0D0;
+      border-radius: 20px;
+      padding: 36px 32px;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(44,26,14,.12);
+      text-align: center;
+    }
+
+    .login-org {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #2C1A0E;
+      margin-bottom: 4px;
+    }
+
+    .login-sub {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #D4521C;
+      margin-bottom: 28px;
+    }
+
+    .login-box input[type="password"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid #D9D0C0;
+      border-radius: 12px;
+      font-size: 1rem;
+      background: #EDEAE0;
+      color: #2C1A0E;
+      text-align: center;
+      letter-spacing: .1em;
+      outline: none;
+      margin-bottom: 14px;
+    }
+
+    .login-box input[type="password"]:focus {
+      border-color: #D4521C;
+    }
+
+    .login-submit {
+      width: 100%;
+      padding: 12px;
+      background: #C9A227;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .01em;
+    }
+
+    .login-submit:hover { background: #B8911F; }
+
+    .login-error {
+      color: #D4521C;
+      font-size: 0.82rem;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+
+    /* ── Brand mark ── */
+    .header-brand-wrap { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { flex-shrink: 0; line-height: 0; }
+    .brand-mark svg { width: 42px; height: 42px; display: block; }
+    .login-mark { line-height: 0; margin-bottom: 16px; }
+    .login-mark svg { width: 56px; height: 56px; }
+
+    /* ── Loading states ── */
+    .spinner {
+      display: inline-block;
+      width: 13px; height: 13px;
+      border: 2px solid #D9CDB8;
+      border-top-color: #D4521C;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: -2px;
+      margin-right: 7px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .card .value.skeleton {
+      display: inline-block;
+      min-width: 64px;
+      height: 2.2rem;
+      border-radius: 8px;
+      color: transparent;
+      background: linear-gradient(90deg, #EDE6D8 25%, #F6F1E7 37%, #EDE6D8 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s ease infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+    /* ── Data error banner ── */
+    .data-error {
+      display: none;
+      background: #FCE8E1;
+      border: 1px solid #E7B9A6;
+      border-left: 4px solid #C0392B;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      color: #8B2A18;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .data-error strong { display: block; margin-bottom: 3px; }
+    .data-error button {
+      margin-top: 10px;
+      background: #C0392B;
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .data-error button:hover { background: #A93226; }
+
+    @media print {
+      header, .cards, .monthly-section, .payment-filter, .upload-btn, #file-input, .followup-alert, .table-card, #login-screen, .data-error, .impact-banner { display: none !important; }
+      body { background: #fff; }
+      .main { padding: 0; max-width: none; }
+      .print-only { display: block !important; }
+      .payment-section { display: block !important; }
+      .payment-grid { grid-template-columns: repeat(2, 1fr); }
+      .person-card { break-inside: avoid; box-shadow: none; border: 1px solid #E8E0D0; }
+    }
+    .print-only { display: none; }
+    .print-header {
+      text-align: center;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 2px solid #2C1A0E;
+    }
+    .print-header .ph-org {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #2C1A0E;
+    }
+    .print-header .ph-meta { font-size: 0.85rem; color: #555; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- Login screen -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-mark" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <rect width="64" height="64" rx="14" fill="#D4521C"/>
+        <circle cx="23" cy="26" r="4.2" fill="#FAF8F3"/>
+        <circle cx="41" cy="26" r="4.2" fill="#FAF8F3"/>
+        <path d="M18 36c3.6 8 9.4 11.5 14 11.5S42.4 44 46 36" fill="none" stroke="#FAF8F3" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="login-org">A Smile from Kenya</div>
+    <div class="login-sub">Events Dashboard</div>
+    <input type="password" id="pwd-input" placeholder="Enter password"
+      onkeydown="if(event.key==='Enter') checkPassword()" />
+    <button class="login-submit" onclick="checkPassword()">Open dashboard</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<header>
+  <div class="header-top">
+    <div class="header-brand-wrap">
+      <span class="brand-mark" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+          <rect width="64" height="64" rx="14" fill="#D4521C"/>
+          <circle cx="23" cy="26" r="4.2" fill="#FAF8F3"/>
+          <circle cx="41" cy="26" r="4.2" fill="#FAF8F3"/>
+          <path d="M18 36c3.6 8 9.4 11.5 14 11.5S42.4 44 46 36" fill="none" stroke="#FAF8F3" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <div class="header-brand">
+        <span class="org-name">A Smile from Kenya</span>
+        <span class="org-sub">Events Dashboard</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="upload-btn" id="refresh-btn" onclick="loadFromSheets()">&#8635; Refresh</button>
+      <button class="upload-btn" style="background:#2C1A0E" onclick="document.getElementById('file-input').click()">&#8593; Upload CSV</button>
+    </div>
+  </div>
+  <p id="last-updated" style="padding-bottom:14px;font-size:0.75rem;color:#8B7355">Loading data…</p>
+  <input type="file" id="file-input" accept=".csv,.tsv,.txt" onchange="handleFile(event)" />
+</header>
+
+<div class="main">
+
+  <!-- Print-only report header (shown when printing payment summaries) -->
+  <div class="print-header print-only">
+    <div class="ph-org">A Smile from Kenya — Payment Summary</div>
+    <div class="ph-meta" id="print-period">All sessions</div>
+  </div>
+
+  <!-- Data error banner -->
+  <div class="data-error" id="data-error">
+    <strong>⚠️ Could not load data</strong>
+    <span id="data-error-text"></span>
+    <div><button type="button" onclick="loadFromSheets()">Try again</button></div>
+  </div>
+
+  <!-- Impact banner -->
+  <div class="impact-banner" id="impact-banner">
+    <span>Together we reached</span>
+    <span class="ib-num" id="ib-participants">—</span>
+    <span>people across</span>
+    <span class="ib-num" id="ib-sessions">—</span>
+    <span>sessions in</span>
+    <span class="ib-num" id="ib-locations">—</span>
+    <span>locations</span>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="cards">
+    <div class="card"><div class="value" id="stat-sessions">—</div><div class="label">Sessions</div></div>
+    <div class="card"><div class="value" id="stat-participants">—</div><div class="label">People reached</div></div>
+    <div class="card"><div class="value" id="stat-facilitators">—</div><div class="label">Facilitators</div></div>
+    <div class="card"><div class="value" id="stat-hours">—</div><div class="label">Hours delivered</div></div>
+    <div class="card"><div class="value" id="stat-km">—</div><div class="label">Km driven</div></div>
+    <div class="card"><div class="value" id="stat-followup">—</div><div class="label">Follow-ups</div></div>
+  </div>
+
+  <!-- Monthly Overview -->
+  <div class="monthly-section" id="monthly-section" style="display:none">
+
+    <div class="monthly-trend-card">
+      <h2>Sessions &amp; Participants per Month</h2>
+      <div class="chart-wrap"><canvas id="chart-monthly"></canvas></div>
+    </div>
+
+    <div class="month-selector-wrap">
+      <p class="month-selector-label">Select a month for details</p>
+      <div class="month-selector" id="month-selector"></div>
+    </div>
+
+    <div class="monthly-detail" id="monthly-detail" style="display:none">
+      <div class="monthly-detail-header" id="monthly-detail-header"></div>
+
+      <!-- Facilitators & Drivers -->
+      <div class="monthly-detail-grid">
+        <div class="monthly-col">
+          <div class="monthly-col-title">Facilitators</div>
+          <div id="monthly-facilitators"></div>
+        </div>
+        <div class="monthly-col">
+          <div class="monthly-col-title">Drivers</div>
+          <div id="monthly-drivers"></div>
+        </div>
+      </div>
+
+      <!-- Session list -->
+      <div class="monthly-session-list" id="monthly-session-list"></div>
+    </div>
+
+  </div>
+
+  <!-- Payment Summary -->
+  <div class="payment-section" id="payment-section" style="display:none">
+
+    <div class="payment-header">
+      <h2>Payment Summary</h2>
+      <p class="payment-subtitle">Session counts per person for the selected period. Use this to verify and approve payments.</p>
+    </div>
+
+    <div class="payment-filter" id="payment-filter">
+      <div class="filter-presets">
+        <button class="filter-btn active" data-preset="all">All time</button>
+        <button class="filter-btn" data-preset="this-month">This month</button>
+        <button class="filter-btn" data-preset="last-month">Last month</button>
+        <button class="filter-btn" data-preset="custom">Custom range</button>
+      </div>
+      <div class="filter-custom" id="filter-custom" style="display:none">
+        <label>From <input type="date" id="filter-from" /></label>
+        <label>To <input type="date" id="filter-to" /></label>
+        <button class="filter-apply-btn" onclick="applyCustomFilter()">Apply</button>
+      </div>
+      <div class="filter-period-label" id="filter-period-label"></div>
+    </div>
+
+    <div class="payment-role-block">
+      <h3 class="role-heading">Facilitators</h3>
+      <div class="payment-grid" id="payment-facilitators"></div>
+    </div>
+
+    <div class="payment-role-block">
+      <h3 class="role-heading">Drivers</h3>
+      <div class="payment-grid" id="payment-drivers"></div>
+    </div>
+
+  </div>
+
+  <!-- Follow-up alert -->
+  <div class="followup-alert" id="followup-alert">
+    <strong>&#9888; Follow-up needed</strong>
+    <span id="followup-text"></span>
+    <div class="followup-detail" id="followup-detail"></div>
+  </div>
+
+  <!-- Recent sessions table -->
+  <div class="table-card">
+    <h2>All Sessions</h2>
+    <div id="table-container">
+      <div class="empty">
+        <div class="icon">📋</div>
+        <p>No data loaded yet</p>
+        <small>Export your Google Sheet as CSV (File → Download → CSV) and upload it above.</small>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Column indices (0-based, matching your sheet) ──────────────────
+const COL = {
+  timestamp:    0,
+  email:        1,
+  facilitator:  2,
+  date:         3,
+  place:        4,
+  driver:       5,
+  project:      6,
+  topics:       7,
+  participants: 8,
+  ageGroup:     9,
+  learned:      10,
+  questions:    11,
+  followup:     12,
+  comments:     13,
+  distance:     22,
+  startTime:    23,
+  endTime:      24,
+};
+
+let charts = {};
+let allRows = [];
+let activeFilter = { preset: 'all', from: null, to: null };
+
+// ── Safety helper ────────────────────────────────────────────────────
+// Escape any sheet-derived text before injecting it via innerHTML, so a
+// stray "<", "&" or quote in a comment can't break the layout or run script.
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Show a cell value safely, falling back to an em dash when empty.
+function cell(value) {
+  const v = (value ?? '').toString().trim();
+  return v ? escapeHtml(v) : '—';
+}
+
+// Toggle shimmer placeholders on the summary cards while data loads.
+function setLoading(on) {
+  document.querySelectorAll('.cards .value').forEach(el => {
+    el.classList.toggle('skeleton', on);
+    if (on) el.textContent = '';
+  });
+}
+
+function showDataError(msg) {
+  document.getElementById('data-error-text').textContent = msg;
+  document.getElementById('data-error').style.display = 'block';
+}
+
+function hideDataError() {
+  document.getElementById('data-error').style.display = 'none';
+}
+
+function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => parseAndRender(e.target.result);
+  reader.readAsText(file);
+}
+
+function parseAndRender(raw) {
+  // Auto-detect separator (tab or comma)
+  const sep = raw.includes('\t') ? '\t' : ',';
+
+  // Proper CSV/TSV parser — handles quoted fields containing the separator or newlines
+  function parseLine(line) {
+    if (sep === '\t') return line.split('\t').map(c => c.trim());
+    const fields = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') { field += '"'; i++; } // escaped quote
+        else inQuotes = !inQuotes;
+      } else if (ch === sep && !inQuotes) {
+        fields.push(field.trim());
+        field = '';
+      } else {
+        field += ch;
+      }
+    }
+    fields.push(field.trim());
+    return fields;
+  }
+
+  const lines = raw.trim().split(/\r?\n/).map(parseLine);
+
+  // Convert Google Viz "Date(y,m,d,h,m,s)" format to standard date strings
+  function gvizDateToString(val) {
+    const m = (val || '').match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+)(?:,(\d+))?)?\)$/);
+    if (!m) return val;
+    const [, y, mo, d, h, mi, s] = m;
+    return `${parseInt(mo) + 1}/${d}/${y}` + (h ? ` ${h}:${(mi || '0').padStart(2, '0')}:${(s || '0').padStart(2, '0')}` : '');
+  }
+
+  // Only normalize the timestamp column (used for row detection only)
+  // Leave COL.date as-is — it's plain text DD-MM-YYYY in the sheet
+  const normalized = lines.map(r => {
+    const row = [...r];
+    row[COL.timestamp] = gvizDateToString(row[COL.timestamp]);
+    return row;
+  });
+
+  // Skip header & empty rows: keep rows where first column has a digit and isn't a header label
+  const rows = normalized.filter(r => {
+    if (r.length < 3) return false;
+    const first = (r[COL.timestamp] || '').trim();
+    return /\d/.test(first) && !/^(timestamp|tijdstempel)/i.test(first);
+  });
+
+  if (rows.length === 0) {
+    console.error('No rows matched. First 3 raw lines:', lines.slice(0, 3));
+    setLoading(false);
+    showDataError('No data rows found. Make sure the sheet is shared as "Anyone with the link can view" and contains session data.');
+    setStatus('No data loaded.');
+    return;
+  }
+
+  hideDataError();
+  setLoading(false);
+
+  allRows = rows;
+  renderStats(rows);
+  renderMonthly(rows);
+  renderTable(rows);
+  renderPaymentFilter();
+  renderPaymentSummary(rows);
+  document.getElementById('payment-section').style.display = 'block';
+
+  document.getElementById('last-updated').textContent =
+    `${rows.length} sessions loaded · Updated ${new Date().toLocaleString()}`;
+}
+
+// ── Stats ────────────────────────────────────────────────────────────
+function renderStats(rows) {
+  const totalParticipants = rows.reduce((s, r) => s + (parseInt(r[COL.participants]) || 0), 0);
+  const facilitators = new Set(rows.map(r => r[COL.facilitator]).filter(Boolean));
+  const locations = new Set(rows.map(r => r[COL.place]).filter(Boolean));
+  const followups = rows.filter(r => {
+    const f = (r[COL.followup] || '').toLowerCase();
+    return f && f !== 'no' && f !== 'nee' && f !== '0';
+  });
+
+  // Total hours delivered
+  let totalMins = 0;
+  rows.forEach(r => {
+    const m = calcDurationMinutes(r[COL.startTime], r[COL.endTime]);
+    if (m) totalMins += m;
+  });
+  const totalHours = totalMins > 0
+    ? (Math.floor(totalMins / 60) + 'h' + (totalMins % 60 > 0 ? ' ' + (totalMins % 60) + 'm' : ''))
+    : '—';
+
+  // Total km driven — use actual distance if available, else estimate 15 km per trip
+  const KM_ESTIMATE = 15;
+  let totalKm = 0;
+  rows.forEach(r => { totalKm += parseInt(r[COL.distance]) || KM_ESTIMATE; });
+
+  // Stat cards
+  document.getElementById('stat-sessions').textContent = rows.length;
+  document.getElementById('stat-participants').textContent = totalParticipants.toLocaleString();
+  document.getElementById('stat-facilitators').textContent = facilitators.size;
+  document.getElementById('stat-hours').textContent = totalHours;
+  document.getElementById('stat-km').textContent = totalKm > 0 ? totalKm.toLocaleString() + ' km' : '—';
+  document.getElementById('stat-followup').textContent = followups.length;
+
+  // Impact banner
+  const banner = document.getElementById('impact-banner');
+  banner.style.display = 'flex';
+  document.getElementById('ib-participants').textContent = totalParticipants.toLocaleString();
+  document.getElementById('ib-sessions').textContent = rows.length;
+  document.getElementById('ib-locations').textContent = locations.size;
+
+  // Follow-up detail
+  const alertEl = document.getElementById('followup-alert');
+  if (followups.length > 0) {
+    alertEl.style.display = 'block';
+    document.getElementById('followup-text').textContent =
+      `${followups.length} session${followups.length !== 1 ? 's' : ''} need attention:`;
+    document.getElementById('followup-detail').innerHTML = followups
+      .sort((a, b) => (parseDate(b[COL.date]) || 0) - (parseDate(a[COL.date]) || 0))
+      .map(r => `
+        <div class="followup-row">
+          <span class="fr-date">${cell(r[COL.date])}</span>
+          <span class="fr-info">${cell(r[COL.place])} · ${cell(r[COL.facilitator])}</span>
+          ${r[14] ? `<span class="fr-reason">${escapeHtml(r[14])}</span>` : ''}
+        </div>`).join('');
+  } else {
+    alertEl.style.display = 'none';
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+// Parse DD/MM/YYYY or MM/DD/YYYY — assumes DD/MM if day > 12, else DD/MM (European)
+function parseDate(str) {
+  if (!str) return null;
+  // Sheet dates are always DD-MM-YYYY — first number is always the day
+  const m = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if (m) {
+    return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+  }
+  return null;
+}
+
+function rowMonthKey(r) {
+  const d = parseDate(r[COL.date]);
+  if (!d || isNaN(d)) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key) {
+  const [y, m] = key.split('-');
+  return new Date(+y, +m - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+}
+
+// ── Monthly overview ──────────────────────────────────────────────────
+function buildMonthMap(rows) {
+  const map = {};
+  rows.forEach(r => {
+    const key = rowMonthKey(r);
+    if (!key) return;
+    if (!map[key]) map[key] = [];
+    map[key].push(r);
+  });
+  return map;
+}
+
+function renderMonthly(rows) {
+  const monthMap = buildMonthMap(rows);
+  const sortedKeys = Object.keys(monthMap).sort();
+
+  if (sortedKeys.length === 0) return;
+  document.getElementById('monthly-section').style.display = 'flex';
+
+  // ── Trend chart ──
+  const sessionCounts    = sortedKeys.map(k => monthMap[k].length);
+  const participantTotals = sortedKeys.map(k =>
+    monthMap[k].reduce((s, r) => s + (parseInt(r[COL.participants]) || 0), 0)
+  );
+  const labels = sortedKeys.map(monthLabel);
+
+  if (charts['chart-monthly']) charts['chart-monthly'].destroy();
+  const ctx = document.getElementById('chart-monthly').getContext('2d');
+  charts['chart-monthly'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Sessions',
+          data: sessionCounts,
+          backgroundColor: '#D4521C',
+          borderRadius: 6,
+          yAxisID: 'ySessions',
+        },
+        {
+          label: 'Participants',
+          data: participantTotals,
+          backgroundColor: '#C9A227',
+          borderRadius: 6,
+          yAxisID: 'yParticipants',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+      },
+      scales: {
+        ySessions:     { beginAtZero: true, position: 'left',  ticks: { font: { size: 11 }, stepSize: 1 }, grid: { color: '#F0E8DB' } },
+        yParticipants: { beginAtZero: true, position: 'right', ticks: { font: { size: 11 } }, grid: { display: false } },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // ── Month selector buttons ──
+  const sel = document.getElementById('month-selector');
+  sel.innerHTML = sortedKeys.map(k =>
+    `<button class="month-btn" data-month="${k}">${monthLabel(k)}</button>`
+  ).join('');
+
+  sel.querySelectorAll('.month-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      sel.querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderMonthDetail(monthMap[btn.dataset.month], btn.dataset.month);
+    });
+  });
+
+  // Auto-select most recent month
+  const lastBtn = sel.querySelector(`[data-month="${sortedKeys[sortedKeys.length - 1]}"]`);
+  if (lastBtn) lastBtn.click();
+}
+
+function eventTypeLabel(project) {
+  const p = (project || '').toLowerCase();
+  if (p.includes('children'))           return 'Children';
+  if (p.includes('parent'))             return 'Parents';
+  if (p.includes('ttt') || p.includes('teacher')) return 'Teachers';
+  if (p.includes('office'))             return 'Office';
+  return project || 'Other';
+}
+
+function typeSummaryChipClass(type) {
+  const t = type.toLowerCase();
+  if (t === 'children') return 'tsc-children';
+  if (t === 'parents')  return 'tsc-parents';
+  if (t === 'teachers') return 'tsc-teachers';
+  if (t === 'office')   return 'tsc-office';
+  return 'tsc-other';
+}
+
+function renderMonthDetail(rows, monthKey) {
+  const totalPax = rows.reduce((s, r) => s + (parseInt(r[COL.participants]) || 0), 0);
+
+  // Header
+  document.getElementById('monthly-detail-header').innerHTML = `
+    <div class="mh-title">${monthLabel(monthKey)}</div>
+    <div class="mh-stats">
+      <div class="mh-stat"><span class="mh-num">${rows.length}</span><span class="mh-lbl">Sessions</span></div>
+      <div class="mh-stat"><span class="mh-num">${totalPax.toLocaleString()}</span><span class="mh-lbl">People reached</span></div>
+    </div>
+  `;
+
+  // Facilitators — each cell may contain one name (count per unique entry)
+  const facMap = {};
+  rows.forEach(r => {
+    const f = (r[COL.facilitator] || '').trim();
+    if (f) facMap[f] = (facMap[f] || 0) + 1;
+  });
+  document.getElementById('monthly-facilitators').innerHTML =
+    Object.entries(facMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, n]) => `
+        <div class="person-row">
+          <span class="person-row-name">${escapeHtml(name)}</span>
+          <span class="person-row-count">${n} session${n !== 1 ? 's' : ''}</span>
+        </div>`)
+      .join('') || '<p style="font-size:.82rem;color:#B0A090">No data</p>';
+
+  // Drivers — trip breakdown by duration category + configurable payment.
+  // NOTE: COL.distance (column 22) is read here as a number of MINUTES
+  // (≤10 = short, ≤20 = long), while the "Km driven" summary card treats the
+  // same column as kilometres. These two interpretations disagree — confirm
+  // what column 22 actually contains and align both before relying on payouts.
+  const drvMap = {};
+  rows.forEach(r => {
+    const drivers = (r[COL.driver] || '').split(',').map(d => d.trim()).filter(Boolean);
+    const mins = parseInt(r[COL.distance], 10) || 0;
+    const type = mins === 0 ? 'unknown' : mins <= 10 ? 'short' : 'long';
+    drivers.forEach(d => {
+      if (!drvMap[d]) drvMap[d] = { short: 0, long: 0, unknown: 0 };
+      drvMap[d][type]++;
+    });
+  });
+
+  const driverEntries = Object.entries(drvMap)
+    .sort((a, b) => (b[1].short + b[1].long + b[1].unknown) - (a[1].short + a[1].long + a[1].unknown));
+
+  // Store for recalculation when rates change
+  window._driverEntries = driverEntries;
+
+  function renderDriverRows() {
+    const rShort   = parseInt(document.getElementById('rate-short').value)   || 0;
+    const rLong    = parseInt(document.getElementById('rate-long').value)    || 0;
+    const rUnknown = parseInt(document.getElementById('rate-unknown').value) || 0;
+
+    const grand = window._driverEntries.reduce((s, [, c]) =>
+      s + c.short * rShort + c.long * rLong + c.unknown * rUnknown, 0);
+
+    document.getElementById('driver-rows').innerHTML =
+      window._driverEntries.map(([name, c]) => {
+        const total = c.short * rShort + c.long * rLong + c.unknown * rUnknown;
+        const chips = [
+          c.short   ? `<span class="dpc-badge dpc-short">${c.short} × 0–10 min</span>`   : '',
+          c.long    ? `<span class="dpc-badge dpc-long">${c.long} × 10–20 min</span>`     : '',
+          c.unknown ? `<span class="dpc-badge dpc-unknown">${c.unknown} × ? min</span>`   : '',
+        ].filter(Boolean).join('');
+        return `
+          <div class="person-row" style="align-items:flex-start;gap:8px;flex-wrap:wrap">
+            <span style="display:flex;align-items:center;gap:6px;flex:1;min-width:100px">
+              <span style="font-size:1rem">🏍️</span>
+              <span class="person-row-name">${escapeHtml(name)}</span>
+            </span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">${chips}</div>
+              ${total > 0 ? `<span class="person-row-count">${total} sh</span>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+    document.getElementById('driver-grand-total-amount').textContent = grand.toLocaleString() + ' sh';
+  }
+
+  document.getElementById('monthly-drivers').innerHTML = `
+    <div class="rate-config">
+      <div class="rate-row">
+        <label class="rate-label"><span class="dpc-badge dpc-short">0–10 min</span></label>
+        <input id="rate-short" class="rate-input" type="number" min="0" value="100" /> sh / trip
+      </div>
+      <div class="rate-row">
+        <label class="rate-label"><span class="dpc-badge dpc-long">10–20 min</span></label>
+        <input id="rate-long" class="rate-input" type="number" min="0" value="200" /> sh / trip
+      </div>
+      <div class="rate-row">
+        <label class="rate-label"><span class="dpc-badge dpc-unknown">? min</span></label>
+        <input id="rate-unknown" class="rate-input" type="number" min="0" value="150" /> sh / trip
+      </div>
+    </div>
+    <div id="driver-rows"></div>
+    <div class="driver-grand-total">
+      <div class="dgt-label">Total to pay all drivers</div>
+      <div id="driver-grand-total-amount" class="dgt-amount">—</div>
+    </div>
+  `;
+
+  document.getElementById('rate-short').addEventListener('input', renderDriverRows);
+  document.getElementById('rate-long').addEventListener('input', renderDriverRows);
+  document.getElementById('rate-unknown').addEventListener('input', renderDriverRows);
+  renderDriverRows();
+
+  // Session list
+  const sorted = [...rows].sort((a, b) => (parseDate(a[COL.date]) || 0) - (parseDate(b[COL.date]) || 0));
+  document.getElementById('monthly-session-list').innerHTML = `
+    <div class="msl-header">Sessions this month</div>
+    ${sorted.map(r => {
+      const pax = parseInt(r[COL.participants]);
+      return `
+        <div class="msl-row">
+          <span class="msl-date">${cell(r[COL.date])}</span>
+          <span>
+            <div class="msl-place">${cell(r[COL.place])}</div>
+            <div class="msl-project">${cell(r[COL.facilitator])} · ${cell(r[COL.driver])}</div>
+          </span>
+          <span class="msl-driver">${projectBadge(r[COL.project])}</span>
+          <span class="msl-pax">${!isNaN(pax) ? pax + ' pax' : '—'}</span>
+        </div>`;
+    }).join('')}
+  `;
+
+  document.getElementById('monthly-detail').style.display = 'block';
+}
+
+// ── Table ────────────────────────────────────────────────────────────
+function projectBadge(project) {
+  const p = (project || '').toLowerCase();
+  const safe = cell(project);
+  if (p.includes('children')) return `<span class="badge badge-blue">${safe}</span>`;
+  if (p.includes('parent'))   return `<span class="badge badge-green">${safe}</span>`;
+  if (p.includes('office'))   return `<span class="badge badge-gray">${safe}</span>`;
+  if (p.includes('ttt') || p.includes('teacher')) return `<span class="badge badge-orange">${safe}</span>`;
+  return `<span class="badge badge-gray">${safe}</span>`;
+}
+
+function followupBadge(val) {
+  const v = (val || '').toLowerCase();
+  if (!v || v === 'no' || v === 'nee' || v === '0') return '<span style="color:#a0aec0">No</span>';
+  return `<span class="badge badge-orange">&#9888; Yes</span>`;
+}
+
+function renderTable(rows) {
+  const container = document.getElementById('table-container');
+  const sorted = [...rows].sort((a, b) => (parseDate(b[COL.date]) || 0) - (parseDate(a[COL.date]) || 0));
+
+  const html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Facilitator</th>
+          <th>Place</th>
+          <th>Project / Event</th>
+          <th>Topics</th>
+          <th>Participants</th>
+          <th>Age Group</th>
+          <th>Follow-up?</th>
+          <th>Distance</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted.map(r => `
+          <tr>
+            <td style="white-space:nowrap">${cell(r[COL.date])}</td>
+            <td>${cell(r[COL.facilitator])}</td>
+            <td>${cell(r[COL.place])}</td>
+            <td>${projectBadge(r[COL.project])}</td>
+            <td style="max-width:180px">${cell(r[COL.topics])}</td>
+            <td style="text-align:center"><strong>${cell(r[COL.participants])}</strong></td>
+            <td>${cell(r[COL.ageGroup])}</td>
+            <td>${followupBadge(r[COL.followup])}</td>
+            <td style="white-space:nowrap">${cell(r[COL.distance])}</td>
+            <td style="white-space:nowrap">${cell(r[COL.startTime])} – ${cell(r[COL.endTime])}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  container.innerHTML = html;
+}
+
+// ── Payment: date filter ─────────────────────────────────────────────
+function getFilteredRows() {
+  if (activeFilter.preset === 'all') return allRows;
+
+  let from, to;
+  if (activeFilter.preset === 'this-month') {
+    const n = new Date();
+    from = new Date(n.getFullYear(), n.getMonth(), 1);
+    to   = new Date(n.getFullYear(), n.getMonth() + 1, 0);
+  } else if (activeFilter.preset === 'last-month') {
+    const n = new Date();
+    from = new Date(n.getFullYear(), n.getMonth() - 1, 1);
+    to   = new Date(n.getFullYear(), n.getMonth(), 0);
+  } else if (activeFilter.preset === 'custom') {
+    from = activeFilter.from ? new Date(activeFilter.from) : null;
+    to   = activeFilter.to   ? new Date(activeFilter.to)   : null;
+  }
+
+  return allRows.filter(r => {
+    const d = parseDate(r[COL.date]);
+    if (!d || isNaN(d)) return false;
+    if (from && d < from) return false;
+    if (to   && d > to)   return false;
+    return true;
+  });
+}
+
+function formatFilterLabel() {
+  const p = activeFilter.preset;
+  if (p === 'all') return 'Showing all sessions';
+  if (p === 'this-month') return 'Showing: ' + new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+  if (p === 'last-month') {
+    const d = new Date(); d.setMonth(d.getMonth() - 1);
+    return 'Showing: ' + d.toLocaleString('default', { month: 'long', year: 'numeric' });
+  }
+  if (p === 'custom') return `Showing: ${activeFilter.from || '?'} to ${activeFilter.to || '?'}`;
+  return '';
+}
+
+function renderPaymentFilter() {
+  document.querySelectorAll('.filter-btn[data-preset]').forEach(btn => {
+    // Clone to remove any previously attached listeners on re-upload
+    const fresh = btn.cloneNode(true);
+    btn.parentNode.replaceChild(fresh, btn);
+    fresh.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      fresh.classList.add('active');
+      activeFilter.preset = fresh.dataset.preset;
+      document.getElementById('filter-custom').style.display =
+        activeFilter.preset === 'custom' ? 'flex' : 'none';
+      if (activeFilter.preset !== 'custom') {
+        activeFilter.from = null;
+        activeFilter.to   = null;
+        refreshPaymentView();
+      }
+    });
+  });
+}
+
+function applyCustomFilter() {
+  activeFilter.from = document.getElementById('filter-from').value || null;
+  activeFilter.to   = document.getElementById('filter-to').value   || null;
+  refreshPaymentView();
+}
+
+function refreshPaymentView() {
+  const filtered = getFilteredRows();
+  renderPaymentSummary(filtered);
+  document.getElementById('filter-period-label').textContent = formatFilterLabel();
+}
+
+// ── Payment: duration helpers ────────────────────────────────────────
+function calcDurationMinutes(startStr, endStr) {
+  if (!startStr || !endStr) return null;
+  const parse = str => {
+    const m = str.match(/(\d+):(\d+)(?::\d+)?\s*(AM|PM)?/i);
+    if (!m) return null;
+    let h = parseInt(m[1]), min = parseInt(m[2]);
+    const ampm = (m[3] || '').toUpperCase();
+    if (ampm === 'PM' && h !== 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return h * 60 + min;
+  };
+  const s = parse(startStr), e = parse(endStr);
+  if (s === null || e === null) return null;
+  const diff = e - s;
+  return diff > 0 ? diff : null; // guard against data-entry errors
+}
+
+function formatDuration(minutes) {
+  if (minutes === null) return null;
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return h > 0 ? `${h}h${m > 0 ? ' ' + m + 'm' : ''}` : `${m}m`;
+}
+
+// ── Payment: render cards ────────────────────────────────────────────
+function renderPaymentSummary(rows) {
+  const facilitatorMap = {}, driverMap = {};
+  const allFacilitators = new Set(allRows.map(r => r[COL.facilitator]).filter(Boolean));
+  const allDrivers      = new Set(allRows.map(r => r[COL.driver]).filter(Boolean));
+
+  rows.forEach(r => {
+    const f = (r[COL.facilitator] || '').trim();
+    const d = (r[COL.driver]      || '').trim();
+    if (f) { if (!facilitatorMap[f]) facilitatorMap[f] = []; facilitatorMap[f].push(r); }
+    if (d) { if (!driverMap[d])      driverMap[d]      = []; driverMap[d].push(r); }
+  });
+
+  document.getElementById('payment-facilitators').innerHTML =
+    buildPersonCards(facilitatorMap, 'facilitator', allDrivers);
+  document.getElementById('payment-drivers').innerHTML =
+    buildPersonCards(driverMap, 'driver', allFacilitators);
+
+  const periodLabel = formatFilterLabel();
+  document.getElementById('filter-period-label').textContent = periodLabel;
+  document.getElementById('print-period').textContent = periodLabel;
+}
+
+function buildPersonCards(personMap, role, crossRoleSet) {
+  const names = Object.keys(personMap).sort();
+  if (names.length === 0)
+    return `<p class="no-sessions-msg">No ${role}s found in the selected period.</p>`;
+  return names.map(n => buildPersonCard(n, personMap[n], role, crossRoleSet)).join('');
+}
+
+function buildPersonCard(name, rows, role, crossRoleSet) {
+  const sorted = [...rows].sort((a, b) => (parseDate(a[COL.date]) || 0) - (parseDate(b[COL.date]) || 0));
+  const totalParticipants = sorted.reduce((s, r) => s + (parseInt(r[COL.participants]) || 0), 0);
+
+  let totalMinutes = 0, hasDuration = false;
+  sorted.forEach(r => {
+    const mins = calcDurationMinutes(r[COL.startTime], r[COL.endTime]);
+    if (mins !== null) { totalMinutes += mins; hasDuration = true; }
+  });
+
+  const alsoBadge = crossRoleSet.has(name)
+    ? `<span class="person-also-badge">also ${role === 'facilitator' ? 'drives' : 'facilitates'}</span>`
+    : '';
+
+  const sessionRows = sorted.map(r => {
+    const mins = calcDurationMinutes(r[COL.startTime], r[COL.endTime]);
+    const pax  = parseInt(r[COL.participants]);
+    return `
+      <div class="session-row">
+        <span class="session-date">${cell(r[COL.date])}</span>
+        <span>
+          <div class="session-place">${cell(r[COL.place])}</div>
+          <div class="session-meta">${cell(r[COL.project])}</div>
+        </span>
+        <span>
+          <div class="session-participants">${!isNaN(pax) ? pax + ' pax' : '—'}</div>
+          <div class="session-duration">${mins !== null ? formatDuration(mins) : ''}</div>
+        </span>
+      </div>`;
+  }).join('');
+
+  const footer = `
+    <div class="person-card-footer">
+      <span>Total participants: <strong>${totalParticipants.toLocaleString()}</strong></span>
+      ${hasDuration ? `<span>Total time: <strong>${formatDuration(totalMinutes)}</strong></span>` : ''}
+    </div>`;
+
+  return `
+    <div class="person-card">
+      <div class="person-card-header">
+        <div>
+          <div class="person-name">${escapeHtml(name)}</div>
+          ${alsoBadge}
+        </div>
+        <div class="session-count-pill">
+          <span class="count-num">${sorted.length}</span>
+          <span class="count-lbl">session${sorted.length !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      <div class="person-sessions">${sessionRows}</div>
+      ${footer}
+    </div>`;
+}
+
+// ── Google Sheets live data ──────────────────────────────────────────
+const SHEET_ID = '1h822_zOALfUyso877giFT0b93CRh4_9yG18qY2I-SbU';
+const SHEET_GID = '1554436643';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}`;
+
+function setStatus(msg, loading = false) {
+  const el = document.getElementById('last-updated');
+  el.innerHTML = (loading ? '<span class="spinner"></span>' : '') + escapeHtml(msg);
+}
+
+async function loadFromSheets() {
+  const btn = document.getElementById('refresh-btn');
+  btn.innerHTML = '<span class="spinner"></span>Loading…';
+  btn.disabled = true;
+  hideDataError();
+  setLoading(true);
+  setStatus('Loading data from Google Sheets…', true);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const res = await fetch(SHEET_URL, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    parseAndRender(text);
+  } catch (err) {
+    clearTimeout(timeout);
+    setLoading(false);
+    if (err.name === 'AbortError') {
+      showDataError('Google Sheets did not respond in time. Check your connection and try again.');
+      setStatus('Load timed out.');
+    } else {
+      showDataError('Make sure the sheet is shared as "Anyone with the link can view", then try again.');
+      setStatus('Load failed.');
+    }
+    console.error(err);
+  } finally {
+    btn.innerHTML = '&#8635; Refresh';
+    btn.disabled = false;
+  }
+}
+
+// ── Login ────────────────────────────────────────────────────────────
+const PWD_HASH = 'f481f061bdee8193786a311a127dededf647152472c87b79ccf3d55a465c9945';
+
+async function hashPassword(pwd) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPassword() {
+  const input = document.getElementById('pwd-input').value;
+  const hash = await hashPassword(input);
+  if (hash === PWD_HASH) {
+    document.getElementById('login-screen').style.display = 'none';
+    sessionStorage.setItem('asfk_auth', '1');
+    loadFromSheets();
+  } else {
+    document.getElementById('login-error').textContent = 'Incorrect password. Try again.';
+    document.getElementById('pwd-input').value = '';
+    document.getElementById('pwd-input').focus();
+  }
+}
+
+// Auto-load on page open — only if already authenticated
+if (sessionStorage.getItem('asfk_auth') === '1') {
+  document.getElementById('login-screen').style.display = 'none';
+  loadFromSheets();
+}
+</script>
+</body>
+</html>
