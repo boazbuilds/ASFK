@@ -914,9 +914,11 @@
     </div>
     <div class="login-org">A Smile from Kenya</div>
     <div class="login-sub">Events Dashboard</div>
-    <input type="password" id="pwd-input" placeholder="Enter password"
-      onkeydown="if(event.key==='Enter') checkPassword()" />
-    <button class="login-submit" onclick="checkPassword()">Open dashboard</button>
+    <form id="login-form">
+      <input type="password" id="pwd-input" placeholder="Enter password"
+        autocomplete="current-password" autofocus />
+      <button type="submit" class="login-submit">Open dashboard</button>
+    </form>
     <div class="login-error" id="login-error"></div>
   </div>
 </div>
@@ -978,7 +980,7 @@
     <div class="card"><div class="value" id="stat-participants">—</div><div class="label">People reached</div></div>
     <div class="card"><div class="value" id="stat-facilitators">—</div><div class="label">Facilitators</div></div>
     <div class="card"><div class="value" id="stat-hours">—</div><div class="label">Hours delivered</div></div>
-    <div class="card"><div class="value" id="stat-km">—</div><div class="label">Km driven</div></div>
+    <div class="card"><div class="value" id="stat-drivetime">—</div><div class="label">Drive time</div></div>
     <div class="card"><div class="value" id="stat-followup">—</div><div class="label">Follow-ups</div></div>
   </div>
 
@@ -1089,7 +1091,8 @@ const COL = {
   questions:    11,
   followup:     12,
   comments:     13,
-  distance:     22,
+  followupReason: 14,
+  driveMinutes: 22, // trip duration in minutes — drives the payout categories below
   startTime:    23,
   endTime:      24,
 };
@@ -1139,35 +1142,55 @@ function handleFile(event) {
   const reader = new FileReader();
   reader.onload = e => parseAndRender(e.target.result);
   reader.readAsText(file);
+  event.target.value = ''; // allow re-uploading the same file
 }
 
 function parseAndRender(raw) {
-  // Auto-detect separator (tab or comma)
-  const sep = raw.includes('\t') ? '\t' : ',';
+  // Auto-detect separator from the header line only, so a stray tab inside a
+  // comment can't make a CSV file parse as TSV
+  const nl = raw.indexOf('\n');
+  const firstLine = nl === -1 ? raw : raw.slice(0, nl);
+  const sep = firstLine.includes('\t') ? '\t' : ',';
 
-  // Proper CSV/TSV parser — handles quoted fields containing the separator or newlines
-  function parseLine(line) {
-    if (sep === '\t') return line.split('\t').map(c => c.trim());
-    const fields = [];
-    let field = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') { field += '"'; i++; } // escaped quote
-        else inQuotes = !inQuotes;
-      } else if (ch === sep && !inQuotes) {
-        fields.push(field.trim());
+  // Proper CSV parser — walks the whole text, so quoted fields may contain
+  // the separator and even newlines (multi-line form answers)
+  function parseDelimited(text) {
+    const out = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; } // escaped quote
+          else inQuotes = false;
+        } else {
+          field += ch;
+        }
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === sep) {
+        row.push(field.trim());
         field = '';
+      } else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(field.trim());
+        field = '';
+        out.push(row);
+        row = [];
       } else {
         field += ch;
       }
     }
-    fields.push(field.trim());
-    return fields;
+    row.push(field.trim());
+    if (row.length > 1 || row[0] !== '') out.push(row);
+    return out;
   }
 
-  const lines = raw.trim().split(/\r?\n/).map(parseLine);
+  // Plain TSV keeps the simple per-line split — TSV exports don't rely on
+  // quoting, and a literal double quote in a field must not swallow the rest
+  const lines = sep === '\t'
+    ? raw.trim().split(/\r?\n/).map(l => l.split('\t').map(c => c.trim()))
+    : parseDelimited(raw.trim());
 
   // Convert Google Viz "Date(y,m,d,h,m,s)" format to standard date strings
   function gvizDateToString(val) {
@@ -1208,7 +1231,7 @@ function parseAndRender(raw) {
   renderMonthly(rows);
   renderTable(rows);
   renderPaymentFilter();
-  renderPaymentSummary(rows);
+  refreshPaymentView(); // respect whichever period filter is still active
   document.getElementById('payment-section').style.display = 'block';
 
   document.getElementById('last-updated').textContent =
@@ -1231,21 +1254,18 @@ function renderStats(rows) {
     const m = calcDurationMinutes(r[COL.startTime], r[COL.endTime]);
     if (m) totalMins += m;
   });
-  const totalHours = totalMins > 0
-    ? (Math.floor(totalMins / 60) + 'h' + (totalMins % 60 > 0 ? ' ' + (totalMins % 60) + 'm' : ''))
-    : '—';
+  const totalHours = totalMins > 0 ? formatDuration(totalMins) : '—';
 
-  // Total km driven — use actual distance if available, else estimate 15 km per trip
-  const KM_ESTIMATE = 15;
-  let totalKm = 0;
-  rows.forEach(r => { totalKm += parseInt(r[COL.distance]) || KM_ESTIMATE; });
+  // Total drive time — column 22 logs each trip's duration in minutes
+  let driveMins = 0;
+  rows.forEach(r => { driveMins += parseInt(r[COL.driveMinutes], 10) || 0; });
 
   // Stat cards
   document.getElementById('stat-sessions').textContent = rows.length;
   document.getElementById('stat-participants').textContent = totalParticipants.toLocaleString();
   document.getElementById('stat-facilitators').textContent = facilitators.size;
   document.getElementById('stat-hours').textContent = totalHours;
-  document.getElementById('stat-km').textContent = totalKm > 0 ? totalKm.toLocaleString() + ' km' : '—';
+  document.getElementById('stat-drivetime').textContent = driveMins > 0 ? formatDuration(driveMins) : '—';
   document.getElementById('stat-followup').textContent = followups.length;
 
   // Impact banner
@@ -1267,7 +1287,7 @@ function renderStats(rows) {
         <div class="followup-row">
           <span class="fr-date">${cell(r[COL.date])}</span>
           <span class="fr-info">${cell(r[COL.place])} · ${cell(r[COL.facilitator])}</span>
-          ${r[14] ? `<span class="fr-reason">${escapeHtml(r[14])}</span>` : ''}
+          ${r[COL.followupReason] ? `<span class="fr-reason">${escapeHtml(r[COL.followupReason])}</span>` : ''}
         </div>`).join('');
   } else {
     alertEl.style.display = 'none';
@@ -1275,15 +1295,27 @@ function renderStats(rows) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
-// Parse DD/MM/YYYY or MM/DD/YYYY — assumes DD/MM if day > 12, else DD/MM (European)
+// Parse sheet dates — always DD-MM-YYYY (or DD/MM/YYYY): first number is the day
 function parseDate(str) {
   if (!str) return null;
-  // Sheet dates are always DD-MM-YYYY — first number is always the day
   const m = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
   if (m) {
     return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
   }
   return null;
+}
+
+// Parse an <input type="date"> value (YYYY-MM-DD) as a LOCAL date — new Date(str)
+// would read it as UTC midnight and shift the day in timezones ahead of UTC
+function parseDateInput(value) {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// A session can have several drivers in one cell ("John, Peter")
+function splitDrivers(cellValue) {
+  return (cellValue || '').split(',').map(s => s.trim()).filter(Boolean);
 }
 
 function rowMonthKey(r) {
@@ -1294,7 +1326,8 @@ function rowMonthKey(r) {
 
 function monthLabel(key) {
   const [y, m] = key.split('-');
-  return new Date(+y, +m - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+  // Fixed locale: the UI is English, so month names shouldn't follow the browser language
+  return new Date(+y, +m - 1, 1).toLocaleString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 // ── Monthly overview ──────────────────────────────────────────────────
@@ -1317,48 +1350,56 @@ function renderMonthly(rows) {
   document.getElementById('monthly-section').style.display = 'flex';
 
   // ── Trend chart ──
-  const sessionCounts    = sortedKeys.map(k => monthMap[k].length);
-  const participantTotals = sortedKeys.map(k =>
-    monthMap[k].reduce((s, r) => s + (parseInt(r[COL.participants]) || 0), 0)
-  );
-  const labels = sortedKeys.map(monthLabel);
+  // Chart.js comes from a CDN; when offline (uploaded CSV) it may be missing.
+  // Skip just the chart instead of crashing the whole render.
+  const trendCard = document.querySelector('.monthly-trend-card');
+  if (typeof Chart === 'undefined') {
+    trendCard.style.display = 'none';
+  } else {
+    trendCard.style.display = '';
+    const sessionCounts    = sortedKeys.map(k => monthMap[k].length);
+    const participantTotals = sortedKeys.map(k =>
+      monthMap[k].reduce((s, r) => s + (parseInt(r[COL.participants]) || 0), 0)
+    );
+    const labels = sortedKeys.map(monthLabel);
 
-  if (charts['chart-monthly']) charts['chart-monthly'].destroy();
-  const ctx = document.getElementById('chart-monthly').getContext('2d');
-  charts['chart-monthly'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Sessions',
-          data: sessionCounts,
-          backgroundColor: '#D4521C',
-          borderRadius: 6,
-          yAxisID: 'ySessions',
-        },
-        {
-          label: 'Participants',
-          data: participantTotals,
-          backgroundColor: '#C9A227',
-          borderRadius: 6,
-          yAxisID: 'yParticipants',
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+    if (charts['chart-monthly']) charts['chart-monthly'].destroy();
+    const ctx = document.getElementById('chart-monthly').getContext('2d');
+    charts['chart-monthly'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Sessions',
+            data: sessionCounts,
+            backgroundColor: '#D4521C',
+            borderRadius: 6,
+            yAxisID: 'ySessions',
+          },
+          {
+            label: 'Participants',
+            data: participantTotals,
+            backgroundColor: '#C9A227',
+            borderRadius: 6,
+            yAxisID: 'yParticipants',
+          }
+        ]
       },
-      scales: {
-        ySessions:     { beginAtZero: true, position: 'left',  ticks: { font: { size: 11 }, stepSize: 1 }, grid: { color: '#F0E8DB' } },
-        yParticipants: { beginAtZero: true, position: 'right', ticks: { font: { size: 11 } }, grid: { display: false } },
-        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        },
+        scales: {
+          ySessions:     { beginAtZero: true, position: 'left',  ticks: { font: { size: 11 }, stepSize: 1 }, grid: { color: '#F0E8DB' } },
+          yParticipants: { beginAtZero: true, position: 'right', ticks: { font: { size: 11 } }, grid: { display: false } },
+          x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+        }
       }
-    }
-  });
+    });
+  }
 
   // ── Month selector buttons ──
   const sel = document.getElementById('month-selector');
@@ -1397,6 +1438,21 @@ function typeSummaryChipClass(type) {
   return 'tsc-other';
 }
 
+// Driver rates survive month switches and page reloads
+const RATE_DEFAULTS = { short: 100, long: 200, unknown: 150 };
+
+function loadRates() {
+  try {
+    return { ...RATE_DEFAULTS, ...JSON.parse(localStorage.getItem('asfk_rates') || '{}') };
+  } catch {
+    return { ...RATE_DEFAULTS };
+  }
+}
+
+function saveRates(rates) {
+  try { localStorage.setItem('asfk_rates', JSON.stringify(rates)); } catch { /* private mode */ }
+}
+
 function renderMonthDetail(rows, monthKey) {
   const totalPax = rows.reduce((s, r) => s + (parseInt(r[COL.participants]) || 0), 0);
 
@@ -1426,16 +1482,12 @@ function renderMonthDetail(rows, monthKey) {
       .join('') || '<p style="font-size:.82rem;color:#B0A090">No data</p>';
 
   // Drivers — trip breakdown by duration category + configurable payment.
-  // NOTE: COL.distance (column 22) is read here as a number of MINUTES
-  // (≤10 = short, ≤20 = long), while the "Km driven" summary card treats the
-  // same column as kilometres. These two interpretations disagree — confirm
-  // what column 22 actually contains and align both before relying on payouts.
+  // COL.driveMinutes holds the trip duration in minutes (≤10 = short, >10 = long).
   const drvMap = {};
   rows.forEach(r => {
-    const drivers = (r[COL.driver] || '').split(',').map(d => d.trim()).filter(Boolean);
-    const mins = parseInt(r[COL.distance], 10) || 0;
+    const mins = parseInt(r[COL.driveMinutes], 10) || 0;
     const type = mins === 0 ? 'unknown' : mins <= 10 ? 'short' : 'long';
-    drivers.forEach(d => {
+    splitDrivers(r[COL.driver]).forEach(d => {
       if (!drvMap[d]) drvMap[d] = { short: 0, long: 0, unknown: 0 };
       drvMap[d][type]++;
     });
@@ -1451,6 +1503,7 @@ function renderMonthDetail(rows, monthKey) {
     const rShort   = parseInt(document.getElementById('rate-short').value)   || 0;
     const rLong    = parseInt(document.getElementById('rate-long').value)    || 0;
     const rUnknown = parseInt(document.getElementById('rate-unknown').value) || 0;
+    saveRates({ short: rShort, long: rLong, unknown: rUnknown });
 
     const grand = window._driverEntries.reduce((s, [, c]) =>
       s + c.short * rShort + c.long * rLong + c.unknown * rUnknown, 0);
@@ -1479,19 +1532,20 @@ function renderMonthDetail(rows, monthKey) {
     document.getElementById('driver-grand-total-amount').textContent = grand.toLocaleString() + ' sh';
   }
 
+  const rates = loadRates();
   document.getElementById('monthly-drivers').innerHTML = `
     <div class="rate-config">
       <div class="rate-row">
         <label class="rate-label"><span class="dpc-badge dpc-short">0–10 min</span></label>
-        <input id="rate-short" class="rate-input" type="number" min="0" value="100" /> sh / trip
+        <input id="rate-short" class="rate-input" type="number" min="0" value="${rates.short}" /> sh / trip
       </div>
       <div class="rate-row">
         <label class="rate-label"><span class="dpc-badge dpc-long">10–20 min</span></label>
-        <input id="rate-long" class="rate-input" type="number" min="0" value="200" /> sh / trip
+        <input id="rate-long" class="rate-input" type="number" min="0" value="${rates.long}" /> sh / trip
       </div>
       <div class="rate-row">
         <label class="rate-label"><span class="dpc-badge dpc-unknown">? min</span></label>
-        <input id="rate-unknown" class="rate-input" type="number" min="0" value="150" /> sh / trip
+        <input id="rate-unknown" class="rate-input" type="number" min="0" value="${rates.unknown}" /> sh / trip
       </div>
     </div>
     <div id="driver-rows"></div>
@@ -1561,12 +1615,14 @@ function renderTable(rows) {
           <th>Participants</th>
           <th>Age Group</th>
           <th>Follow-up?</th>
-          <th>Distance</th>
+          <th>Drive (min)</th>
           <th>Time</th>
         </tr>
       </thead>
       <tbody>
-        ${sorted.map(r => `
+        ${sorted.map(r => {
+          const hasTime = (r[COL.startTime] || '').trim() || (r[COL.endTime] || '').trim();
+          return `
           <tr>
             <td style="white-space:nowrap">${cell(r[COL.date])}</td>
             <td>${cell(r[COL.facilitator])}</td>
@@ -1576,10 +1632,10 @@ function renderTable(rows) {
             <td style="text-align:center"><strong>${cell(r[COL.participants])}</strong></td>
             <td>${cell(r[COL.ageGroup])}</td>
             <td>${followupBadge(r[COL.followup])}</td>
-            <td style="white-space:nowrap">${cell(r[COL.distance])}</td>
-            <td style="white-space:nowrap">${cell(r[COL.startTime])} – ${cell(r[COL.endTime])}</td>
-          </tr>
-        `).join('')}
+            <td style="white-space:nowrap">${cell(r[COL.driveMinutes])}</td>
+            <td style="white-space:nowrap">${hasTime ? `${cell(r[COL.startTime])} – ${cell(r[COL.endTime])}` : '—'}</td>
+          </tr>`;
+        }).join('')}
       </tbody>
     </table>
   `;
@@ -1600,8 +1656,9 @@ function getFilteredRows() {
     from = new Date(n.getFullYear(), n.getMonth() - 1, 1);
     to   = new Date(n.getFullYear(), n.getMonth(), 0);
   } else if (activeFilter.preset === 'custom') {
-    from = activeFilter.from ? new Date(activeFilter.from) : null;
-    to   = activeFilter.to   ? new Date(activeFilter.to)   : null;
+    from = parseDateInput(activeFilter.from);
+    to   = parseDateInput(activeFilter.to);
+    if (to) to.setHours(23, 59, 59, 999); // include the whole end day
   }
 
   return allRows.filter(r => {
@@ -1616,10 +1673,10 @@ function getFilteredRows() {
 function formatFilterLabel() {
   const p = activeFilter.preset;
   if (p === 'all') return 'Showing all sessions';
-  if (p === 'this-month') return 'Showing: ' + new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+  if (p === 'this-month') return 'Showing: ' + new Date().toLocaleString('en-GB', { month: 'long', year: 'numeric' });
   if (p === 'last-month') {
-    const d = new Date(); d.setMonth(d.getMonth() - 1);
-    return 'Showing: ' + d.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+    return 'Showing: ' + d.toLocaleString('en-GB', { month: 'long', year: 'numeric' });
   }
   if (p === 'custom') return `Showing: ${activeFilter.from || '?'} to ${activeFilter.to || '?'}`;
   return '';
@@ -1646,8 +1703,11 @@ function renderPaymentFilter() {
 }
 
 function applyCustomFilter() {
-  activeFilter.from = document.getElementById('filter-from').value || null;
-  activeFilter.to   = document.getElementById('filter-to').value   || null;
+  let from = document.getElementById('filter-from').value || null;
+  let to   = document.getElementById('filter-to').value   || null;
+  if (from && to && from > to) [from, to] = [to, from]; // tolerate reversed inputs
+  activeFilter.from = from;
+  activeFilter.to   = to;
   refreshPaymentView();
 }
 
@@ -1684,14 +1744,17 @@ function formatDuration(minutes) {
 // ── Payment: render cards ────────────────────────────────────────────
 function renderPaymentSummary(rows) {
   const facilitatorMap = {}, driverMap = {};
-  const allFacilitators = new Set(allRows.map(r => r[COL.facilitator]).filter(Boolean));
-  const allDrivers      = new Set(allRows.map(r => r[COL.driver]).filter(Boolean));
+  const allFacilitators = new Set(allRows.map(r => (r[COL.facilitator] || '').trim()).filter(Boolean));
+  const allDrivers      = new Set();
+  allRows.forEach(r => splitDrivers(r[COL.driver]).forEach(d => allDrivers.add(d)));
 
   rows.forEach(r => {
     const f = (r[COL.facilitator] || '').trim();
-    const d = (r[COL.driver]      || '').trim();
     if (f) { if (!facilitatorMap[f]) facilitatorMap[f] = []; facilitatorMap[f].push(r); }
-    if (d) { if (!driverMap[d])      driverMap[d]      = []; driverMap[d].push(r); }
+    splitDrivers(r[COL.driver]).forEach(d => {
+      if (!driverMap[d]) driverMap[d] = [];
+      driverMap[d].push(r);
+    });
   });
 
   document.getElementById('payment-facilitators').innerHTML =
@@ -1787,7 +1850,7 @@ async function loadFromSheets() {
   const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
-    const res = await fetch(SHEET_URL, { signal: controller.signal });
+    const res = await fetch(SHEET_URL, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeout);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
@@ -1799,7 +1862,7 @@ async function loadFromSheets() {
       showDataError('Google Sheets did not respond in time. Check your connection and try again.');
       setStatus('Load timed out.');
     } else {
-      showDataError('Make sure the sheet is shared as "Anyone with the link can view", then try again.');
+      showDataError(`Make sure the sheet is shared as "Anyone with the link can view", then try again. (${err.message})`);
       setStatus('Load failed.');
     }
     console.error(err);
@@ -1819,7 +1882,15 @@ async function hashPassword(pwd) {
 
 async function checkPassword() {
   const input = document.getElementById('pwd-input').value;
-  const hash = await hashPassword(input);
+  let hash;
+  try {
+    hash = await hashPassword(input);
+  } catch (err) {
+    // crypto.subtle needs a secure context — file://, localhost or https
+    document.getElementById('login-error').textContent =
+      'Password check needs HTTPS — open the file directly or host it over https.';
+    return;
+  }
   if (hash === PWD_HASH) {
     document.getElementById('login-screen').style.display = 'none';
     sessionStorage.setItem('asfk_auth', '1');
@@ -1830,6 +1901,11 @@ async function checkPassword() {
     document.getElementById('pwd-input').focus();
   }
 }
+
+document.getElementById('login-form').addEventListener('submit', e => {
+  e.preventDefault();
+  checkPassword();
+});
 
 // Auto-load on page open — only if already authenticated
 if (sessionStorage.getItem('asfk_auth') === '1') {
