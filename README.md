@@ -22,10 +22,22 @@ self-contained `dashboard.html`. No build step, no dependencies to install.
 - **Payment summary** — session counts per facilitator and driver for a chosen
   period, with configurable driver rates (remembered by the browser), ready to
   verify and approve payouts. Sessions with several drivers ("John, Peter")
-  count for each driver individually.
+  count for each driver individually, and spelling variants of one name
+  ("John" / "john ") are merged so pay never fragments across cards.
+- **Data quality panel** — flags rows with missing or ambiguous fields
+  (no participants, no drive time, unreadable date…) and likely duplicate name
+  spellings, so they can be fixed at the source. Hidden when the data is clean.
 - **Sessions table** — every session, sorted by date, with follow-up flags.
 - **Follow-up alerts** — highlights sessions that still need attention.
 - **Print-ready** — print the payment summary as a clean report.
+
+## Better data at the source
+
+The dashboard works around messy input, but cleaner input is better than any
+workaround. **[FORM_GUIDE.md](FORM_GUIDE.md)** explains how to improve the
+Google Form people fill in — design principles, a question-by-question plan,
+and an Apps Script (`tools/build-improved-form.gs`) that builds the improved
+form for you.
 
 ## Data source
 
