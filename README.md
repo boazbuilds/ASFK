@@ -7,6 +7,12 @@ driver payments, and monthly impact.
 Everything — markup, styling, logic, login screen and favicon — lives in one
 self-contained `dashboard.html`. No build step, no dependencies to install.
 
+> ### ▶ [Open the dashboard](https://boazbuilds.github.io/ASFK/dashboard.html)
+> `https://boazbuilds.github.io/ASFK/dashboard.html`
+>
+> _Bookmark this link. It goes live once GitHub Pages is enabled — see
+> [Hosting](#hosting-optional)._
+
 ## Features
 
 - **Summary cards** — sessions, people reached, facilitators, hours delivered,
